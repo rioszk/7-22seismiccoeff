@@ -27,7 +27,6 @@ class SeismicInputs:
     Sds: float
     Sd1: float
     TL: float
-    T_selected: float
 
 
 # -----------------------------------------------------------------------------
@@ -120,7 +119,21 @@ with st.sidebar:
     st.header("Seismic inputs")
 
     risk_category = st.selectbox("Risk category", ["I", "II", "III", "IV"], index=3)
-    Ie = st.number_input("Importance factor, Ie", value=1.5, min_value=0.1, step=0.1)
+
+    importance_factor_map = {
+        "I": 1.00,
+        "II": 1.00,
+        "III": 1.25,
+        "IV": 1.50,
+    }
+    Ie = importance_factor_map[risk_category]
+    st.number_input(
+        "Importance factor, Ie",
+        value=float(Ie),
+        min_value=0.1,
+        step=0.1,
+        disabled=True,
+    )
 
     st.subheader("System factors")
     R = st.number_input("Response modification coefficient, R", value=8.0, min_value=0.1, step=0.1)
@@ -128,8 +141,23 @@ with st.sidebar:
     Cd = st.number_input("Deflection amplification factor, Cd", value=3.0, min_value=0.1, step=0.1)
 
     st.subheader("Approximate period parameters")
-    Ct = st.number_input("Ct", value=0.03, min_value=0.0, step=0.001, format="%.3f")
-    x = st.number_input("x", value=0.75, min_value=0.0, step=0.01, format="%.2f")
+    period_parameter_options = {
+        "0.028, 0.80": (0.028, 0.80),
+        "0.016, 0.90": (0.016, 0.90),
+        "0.030, 0.75": (0.030, 0.75),
+        "0.020, 0.75": (0.020, 0.75),
+    }
+    period_parameter_label = st.selectbox(
+        "Select Ct and x",
+        list(period_parameter_options.keys()),
+        index=2,
+    )
+    Ct, x = period_parameter_options[period_parameter_label]
+    left_period, right_period = st.columns(2)
+    with left_period:
+        st.number_input("Ct", value=float(Ct), min_value=0.0, step=0.001, format="%.3f", disabled=True)
+    with right_period:
+        st.number_input("x", value=float(x), min_value=0.0, step=0.01, format="%.2f", disabled=True)
     hn = st.number_input("Structural height, hn (ft)", value=30.0, min_value=0.0, step=1.0)
 
     st.subheader("Seismic hazard")
@@ -142,13 +170,6 @@ with st.sidebar:
     TL = st.number_input("TL (s)", value=8.0, min_value=0.01, step=0.1)
 
     Ta = calc_Ta(Ct, x, hn)
-    T_selected = st.number_input(
-        "Period to evaluate / highlight (s)",
-        value=float(round(Ta, 3)),
-        min_value=0.0,
-        step=0.01,
-        format="%.3f",
-    )
 
     enforce_lower_bound = st.checkbox("Apply ELF lower-bound coefficient check", value=True)
 
@@ -173,7 +194,6 @@ inputs = SeismicInputs(
     Sds=Sds,
     Sd1=Sd1,
     TL=TL,
-    T_selected=T_selected,
 )
 
 
@@ -215,7 +235,7 @@ with col_b:
 # -----------------------------------------------------------------------------
 # Build the two methods
 # -----------------------------------------------------------------------------
-T_max_for_plot = max(10.0, inputs.TL * 1.2, inputs.T_selected * 1.2)
+T_max_for_plot = max(10.0, inputs.TL * 1.2, Ta * 1.2)
 T_plot = np.linspace(0.0, T_max_for_plot, 1201)
 
 Sa_asce = design_spectrum_sa(T_plot, inputs.Sds, inputs.Sd1, inputs.TL)
@@ -259,7 +279,7 @@ if uploaded_file is not None:
 # -----------------------------------------------------------------------------
 # Evaluate at selected period
 # -----------------------------------------------------------------------------
-Sa_asce_sel = float(design_spectrum_sa(np.array([inputs.T_selected]), inputs.Sds, inputs.Sd1, inputs.TL)[0])
+Sa_asce_sel = float(design_spectrum_sa(np.array([Ta]), inputs.Sds, inputs.Sd1, inputs.TL)[0])
 C_asce_sel = float(coefficient_from_sa(np.array([Sa_asce_sel]), inputs.R, inputs.Ie)[0])
 if enforce_lower_bound:
     C_asce_sel = max(C_asce_sel, lb)
@@ -267,7 +287,7 @@ if enforce_lower_bound:
 C_csv_sel = None
 Sa_csv_sel = None
 if csv_ready:
-    Sa_csv_sel = float(interpolate_uploaded_spectrum(np.array([inputs.T_selected]), csv_df, csv_t_col, csv_sa_col)[0])
+    Sa_csv_sel = float(interpolate_uploaded_spectrum(np.array([Ta]), csv_df, csv_t_col, csv_sa_col)[0])
     C_csv_sel = float(coefficient_from_sa(np.array([Sa_csv_sel]), inputs.R, inputs.Ie)[0])
     if enforce_lower_bound:
         C_csv_sel = max(C_csv_sel, lb)
@@ -313,14 +333,14 @@ if csv_ready:
 # Highlight selected-period values
 fig.add_trace(
     go.Scatter(
-        x=[inputs.T_selected],
+        x=[Ta],
         y=[C_asce_sel],
         mode="markers+text",
         name="ASCE @ selected T",
         text=[f"ASCE = {C_asce_sel:.4f}"],
         textposition="top center",
         marker=dict(size=10),
-        hovertemplate="Selected T<br>Method: ASCE 7-22<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
+        hovertemplate="Approximate period Ta<br>Method: ASCE 7-22<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
         showlegend=False,
     )
 )
@@ -328,30 +348,30 @@ fig.add_trace(
 if C_csv_sel is not None:
     fig.add_trace(
         go.Scatter(
-            x=[inputs.T_selected],
+            x=[Ta],
             y=[C_csv_sel],
             mode="markers+text",
             name="CSV @ selected T",
             text=[f"CSV = {C_csv_sel:.4f}"],
             textposition="bottom center",
             marker=dict(size=10),
-            hovertemplate="Selected T<br>Method: CSV spectrum<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
+            hovertemplate="Approximate period Ta<br>Method: CSV spectrum<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
             showlegend=False,
         )
     )
 
 # Governing point marker
-fig.add_vline(x=inputs.T_selected, line_dash="dash", annotation_text=f"T = {inputs.T_selected:.3f} s")
+fig.add_vline(x=Ta, line_dash="dash", annotation_text=f"Ta = {Ta:.3f} s")
 fig.add_trace(
     go.Scatter(
-        x=[inputs.T_selected],
+        x=[Ta],
         y=[governing_value],
         mode="markers+text",
         name="Governing at selected T",
-        text=[f"Governing: {governing_method}\nC = {governing_value:.4f}"],
+        text=[f"Governing at Ta: {governing_method}\nC = {governing_value:.4f}"],
         textposition="middle right",
         marker=dict(size=15, symbol="star"),
-        hovertemplate="Governing<br>Method: " + governing_method + "<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
+        hovertemplate="Governing at Ta<br>Method: 
         showlegend=False,
     )
 )
@@ -362,6 +382,7 @@ fig.update_layout(
     yaxis_title="Seismic coefficient",
     hovermode="x unified",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    yaxis=dict(rangemode="tozero"),
     height=650,
 )
 
@@ -371,14 +392,14 @@ st.plotly_chart(fig, use_container_width=True)
 # -----------------------------------------------------------------------------
 # Results table
 # -----------------------------------------------------------------------------
-st.subheader("Selected-period results")
+st.subheader("Approximate-period results")
 results_rows = [
     {
         "Method": "ASCE 7-22 design spectrum",
-        "Selected period T (s)": inputs.T_selected,
+        "Approximate period Ta (s)": Ta,
         "Sa(T)": Sa_asce_sel,
         "Coefficient": C_asce_sel,
-        "Governing at selected T": governing_method == "ASCE 7-22 design spectrum",
+        "Governing at Ta": governing_method == "ASCE 7-22 design spectrum",
     }
 ]
 
@@ -386,10 +407,10 @@ if C_csv_sel is not None:
     results_rows.append(
         {
             "Method": "Uploaded multi-period spectrum",
-            "Selected period T (s)": inputs.T_selected,
+            "Approximate period Ta (s)": Ta,
             "Sa(T)": Sa_csv_sel,
             "Coefficient": C_csv_sel,
-            "Governing at selected T": governing_method == "Uploaded multi-period spectrum",
+            "Governing at Ta": governing_method == "Uploaded multi-period spectrum",
         }
     )
 
@@ -425,5 +446,6 @@ with st.expander("Notes / assumptions used in this app"):
         "- The uploaded CSV is assumed to contain **period** and **design spectral acceleration** values.\n"
         "- Both curves are converted to a plotted **seismic coefficient** using `Coefficient = Sa * Ie / R`.\n"
         "- An optional **ELF lower-bound** check can be applied to both curves for comparison.\n"
+        "- The point highlighted on the plot is the **approximate period Ta = Ct × hn^x** calculated directly from the selected Ct/x pair and the entered height.\n"
         "- If you want this app to follow a different house standard for the governing seismic coefficient, adjust the helper functions at the top of the file."
     )
