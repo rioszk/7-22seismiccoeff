@@ -368,10 +368,11 @@ fig.add_trace(
         y=[governing_value],
         mode="markers+text",
         name="Governing at selected T",
-        text=[f"Governing at Ta: {governing_method}\nC = {governing_value:.4f}"],
+        text=[f"Governing at Ta: {governing_method}
+C = {governing_value:.4f}"],
         textposition="middle right",
         marker=dict(size=15, symbol="star"),
-        hovertemplate="Governing at Ta<br>Method: 
+        hovertemplate=f"Governing at Ta<br>Method: {governing_method}<br>Period: %{{x:.3f}} s<br>Coefficient: %{{y:.4f}}<extra></extra>",
         showlegend=False,
     )
 )
@@ -446,6 +447,7 @@ with st.expander("Notes / assumptions used in this app"):
         "- The uploaded CSV is assumed to contain **period** and **design spectral acceleration** values.\n"
         "- Both curves are converted to a plotted **seismic coefficient** using `Coefficient = Sa * Ie / R`.\n"
         "- An optional **ELF lower-bound** check can be applied to both curves for comparison.\n"
-        "- The point highlighted on the plot is the **approximate period Ta = Ct × hn^x** calculated directly from the selected Ct/x pair and the entered height.\n"
+        "- The point highlighted on the plot is the **approximate period Ta = Ct × hn^x** calculated directly from the selected Ct/x pair and the entered height.
+"
         "- If you want this app to follow a different house standard for the governing seismic coefficient, adjust the helper functions at the top of the file."
     )
