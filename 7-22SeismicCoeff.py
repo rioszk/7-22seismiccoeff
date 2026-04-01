@@ -441,12 +441,11 @@ st.download_button(
 # Notes
 # -----------------------------------------------------------------------------
 with st.expander("Notes / assumptions used in this app"):
-    st.markdown(
-        "- The **ASCE 7-22 design spectrum** curve is built from **SDS**, **SD1**, and **TL** using the standard piecewise design spectrum shape.\n"
-        "- The uploaded CSV is assumed to contain **period** and **design spectral acceleration** values.\n"
-        "- Both curves are converted to a plotted **seismic coefficient** using `Coefficient = Sa * Ie / R`.\n"
-        "- An optional **ELF lower-bound** check can be applied to both curves for comparison.\n"
-        "- The point highlighted on the plot is the **approximate period Ta = Ct * hn^x** calculated directly from the selected Ct/x pair and the entered height.
-"
-        "- If you want this app to follow a different house standard for the governing seismic coefficient, adjust the helper functions at the top of the file."
-    )
+    st.markdown("""
+- The **ASCE 7-22 design spectrum** curve is built from **SDS**, **SD1**, and **TL** using the standard piecewise design spectrum shape.
+- The uploaded CSV is assumed to contain **period** and **design spectral acceleration** values.
+- Both curves are converted to a plotted **seismic coefficient** using `Coefficient = Sa * Ie / R`.
+- An optional **ELF lower-bound** check can be applied to both curves for comparison.
+- The point highlighted on the plot is the **approximate period Ta = Ct * hn^x** calculated directly from the selected Ct/x pair and the entered height.
+- If you want this app to follow a different house standard for the governing seismic coefficient, adjust the helper functions at the top of the file.
+""")
