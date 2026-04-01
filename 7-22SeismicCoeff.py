@@ -368,8 +368,7 @@ fig.add_trace(
         y=[governing_value],
         mode="markers+text",
         name="Governing at selected T",
-        text=[f"Governing at Ta: {governing_method}
-C = {governing_value:.4f}"],
+        text=[f"Governing at Ta: {governing_method}<br>C = {governing_value:.4f}"],
         textposition="middle right",
         marker=dict(size=15, symbol="star"),
         hovertemplate=f"Governing at Ta<br>Method: {governing_method}<br>Period: %{{x:.3f}} s<br>Coefficient: %{{y:.4f}}<extra></extra>",
