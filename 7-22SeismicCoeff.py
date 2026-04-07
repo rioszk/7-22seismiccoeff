@@ -1,4 +1,3 @@
-import io
 from dataclasses import dataclass
 
 import numpy as np
@@ -83,17 +82,16 @@ def lower_bound_coefficient(Sds: float, Ie: float, S1: float, R: float) -> float
     """
     ELF lower-bound checks often referenced for Cs:
       max(0.044*SDS*Ie, 0.01), and if S1 >= 0.6 then not less than 0.5*S1/(R/Ie)
-
-    This app shows the spectrum-based coefficients directly and reports the governing
-    value at the selected period with optional ELF lower-bound enforcement.
     """
-    lb = max(0.044 * Sds * Ie, 0.01)
+    lb = max(0.044 * Sds * Ie, 0.01)  # ASCE 7-22 Eq. 12.8-6
     if S1 >= 0.6:
-        lb = max(lb, 0.5 * S1 * Ie / R)
+        lb = max(lb, 0.5 * S1 * Ie / R)  # ASCE 7-22 Eq. 12.8-7
     return lb
 
 
-def interpolate_uploaded_spectrum(T_query: np.ndarray, spec_df: pd.DataFrame, t_col: str, sa_col: str) -> np.ndarray:
+def interpolate_uploaded_spectrum(
+    T_query: np.ndarray, spec_df: pd.DataFrame, t_col: str, sa_col: str
+) -> np.ndarray:
     """Linearly interpolate uploaded multi-period spectrum to the requested periods."""
     df = spec_df[[t_col, sa_col]].dropna().copy()
     df = df.sort_values(t_col)
@@ -130,8 +128,6 @@ with st.sidebar:
     st.number_input(
         "Importance factor, Ie",
         value=float(Ie),
-        min_value=0.1,
-        step=0.1,
         disabled=True,
     )
 
@@ -153,11 +149,13 @@ with st.sidebar:
         index=2,
     )
     Ct, x = period_parameter_options[period_parameter_label]
+
     left_period, right_period = st.columns(2)
     with left_period:
         st.number_input("Ct", value=float(Ct), min_value=0.0, step=0.001, format="%.3f", disabled=True)
     with right_period:
         st.number_input("x", value=float(x), min_value=0.0, step=0.01, format="%.2f", disabled=True)
+
     hn = st.number_input("Structural height, hn (ft)", value=30.0, min_value=0.0, step=1.0)
 
     st.subheader("Seismic hazard")
@@ -200,7 +198,7 @@ inputs = SeismicInputs(
 # -----------------------------------------------------------------------------
 # Input summary
 # -----------------------------------------------------------------------------
-col_a, col_b = st.columns([1.3, 1])
+col_a, = st.columns([1.3])
 with col_a:
     st.subheader("Calculated values")
     lb = lower_bound_coefficient(inputs.Sds, inputs.Ie, inputs.S1, inputs.R)
@@ -211,25 +209,17 @@ with col_a:
         {
             "Parameter": ["Ta", "T0", "Ts", "TL", "ELF lower bound"],
             "Value": [Ta, T0, Ts, inputs.TL, lb],
-            "Units": ["s", "s", "s", "s", "-"]
+            "Units": ["s", "s", "s", "s", "-"],
+            "Reference": [
+                "12.8.2.1",
+                "11.4.5",
+                "11.4.5",
+                "Mapped long-period transition period",
+                "12.8-6 / 12.8-7",
+            ],
         }
     )
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
-
-with col_b:
-    st.subheader("CSV format expected")
-    st.markdown(
-        "Use a CSV with at least two columns: one for **period** and one for **spectral acceleration**.\n\n"
-        "Example:\n"
-        "```csv\n"
-        "Period,Sa\n"
-        "0.00,0.64\n"
-        "0.10,1.20\n"
-        "0.20,1.55\n"
-        "0.50,1.10\n"
-        "1.00,0.62\n"
-        "```"
-    )
 
 
 # -----------------------------------------------------------------------------
@@ -269,18 +259,21 @@ if uploaded_file is not None:
 
             Sa_csv = interpolate_uploaded_spectrum(T_plot, csv_df, csv_t_col, csv_sa_col)
             C_csv = coefficient_from_sa(Sa_csv, inputs.R, inputs.Ie)
+
             if enforce_lower_bound:
                 C_csv = np.maximum(C_csv, lb)
+
             csv_ready = True
     except Exception as exc:
         st.error(f"Could not read CSV: {exc}")
 
 
 # -----------------------------------------------------------------------------
-# Evaluate at selected period
+# Evaluate at Ta
 # -----------------------------------------------------------------------------
 Sa_asce_sel = float(design_spectrum_sa(np.array([Ta]), inputs.Sds, inputs.Sd1, inputs.TL)[0])
 C_asce_sel = float(coefficient_from_sa(np.array([Sa_asce_sel]), inputs.R, inputs.Ie)[0])
+
 if enforce_lower_bound:
     C_asce_sel = max(C_asce_sel, lb)
 
@@ -289,6 +282,7 @@ Sa_csv_sel = None
 if csv_ready:
     Sa_csv_sel = float(interpolate_uploaded_spectrum(np.array([Ta]), csv_df, csv_t_col, csv_sa_col)[0])
     C_csv_sel = float(coefficient_from_sa(np.array([Sa_csv_sel]), inputs.R, inputs.Ie)[0])
+
     if enforce_lower_bound:
         C_csv_sel = max(C_csv_sel, lb)
 
@@ -330,13 +324,12 @@ if csv_ready:
         )
     )
 
-# Highlight selected-period values
 fig.add_trace(
     go.Scatter(
         x=[Ta],
         y=[C_asce_sel],
         mode="markers+text",
-        name="ASCE @ selected T",
+        name="ASCE @ Ta",
         text=[f"ASCE = {C_asce_sel:.4f}"],
         textposition="top center",
         marker=dict(size=10),
@@ -351,7 +344,7 @@ if C_csv_sel is not None:
             x=[Ta],
             y=[C_csv_sel],
             mode="markers+text",
-            name="CSV @ selected T",
+            name="CSV @ Ta",
             text=[f"CSV = {C_csv_sel:.4f}"],
             textposition="bottom center",
             marker=dict(size=10),
@@ -360,15 +353,14 @@ if C_csv_sel is not None:
         )
     )
 
-# Governing point marker
 fig.add_vline(x=Ta, line_dash="dash", annotation_text=f"Ta = {Ta:.3f} s")
 fig.add_trace(
     go.Scatter(
         x=[Ta],
         y=[governing_value],
         mode="markers+text",
-        name="Governing at selected T",
-        text=[f"Governing at Ta: {governing_method}<br>C = {governing_value:.4f}"],
+        name="Governing at Ta",
+        text=[f"Governing at Ta: {governing_method}<br>Cs = {governing_value:.4f}"],
         textposition="middle right",
         marker=dict(size=15, symbol="star"),
         hovertemplate=f"Governing at Ta<br>Method: {governing_method}<br>Period: %{{x:.3f}} s<br>Coefficient: %{{y:.4f}}<extra></extra>",
@@ -376,13 +368,21 @@ fig.add_trace(
     )
 )
 
+# Add Y-axis headroom
+y_max = max(
+    np.max(C_asce),
+    np.max(C_csv) if csv_ready else 0,
+    governing_value,
+)
+y_buffer = 0.25
+
 fig.update_layout(
-    title="Seismic coefficient vs. structure period",
+    title="Plot - Seismic Coefficient, Cs vs. Structure Period",
     xaxis_title="Period, T (s)",
-    yaxis_title="Seismic coefficient",
+    yaxis_title="Seismic Coefficient, Cs",
     hovermode="x unified",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    yaxis=dict(rangemode="tozero"),
+    yaxis=dict(range=[0, y_max * (1 + y_buffer)]),
     height=650,
 )
 
@@ -393,11 +393,12 @@ st.plotly_chart(fig, use_container_width=True)
 # Results table
 # -----------------------------------------------------------------------------
 st.subheader("Approximate-period results")
+
 results_rows = [
     {
         "Method": "ASCE 7-22 design spectrum",
         "Approximate period Ta (s)": Ta,
-        "Sa(T)": Sa_asce_sel,
+        "Sa(Ta)": Sa_asce_sel,
         "Coefficient": C_asce_sel,
         "Governing at Ta": governing_method == "ASCE 7-22 design spectrum",
     }
@@ -408,7 +409,7 @@ if C_csv_sel is not None:
         {
             "Method": "Uploaded multi-period spectrum",
             "Approximate period Ta (s)": Ta,
-            "Sa(T)": Sa_csv_sel,
+            "Sa(Ta)": Sa_csv_sel,
             "Coefficient": C_csv_sel,
             "Governing at Ta": governing_method == "Uploaded multi-period spectrum",
         }
@@ -421,10 +422,13 @@ st.dataframe(pd.DataFrame(results_rows), use_container_width=True, hide_index=Tr
 # Downloadable plot data
 # -----------------------------------------------------------------------------
 st.subheader("Export plot data")
-export_df = pd.DataFrame({
-    "T": T_plot,
-    "C_asce_design_spectrum": C_asce,
-})
+export_df = pd.DataFrame(
+    {
+        "T": T_plot,
+        "C_asce_design_spectrum": C_asce,
+    }
+)
+
 if csv_ready:
     export_df["C_uploaded_multi_period"] = C_csv
 
@@ -441,11 +445,13 @@ st.download_button(
 # Notes
 # -----------------------------------------------------------------------------
 with st.expander("Notes / assumptions used in this app"):
-    st.markdown("""
+    st.markdown(
+        """
 - The **ASCE 7-22 design spectrum** curve is built from **SDS**, **SD1**, and **TL** using the standard piecewise design spectrum shape.
 - The uploaded CSV is assumed to contain **period** and **design spectral acceleration** values.
 - Both curves are converted to a plotted **seismic coefficient** using `Coefficient = Sa * Ie / R`.
 - An optional **ELF lower-bound** check can be applied to both curves for comparison.
 - The point highlighted on the plot is the **approximate period Ta = Ct * hn^x** calculated directly from the selected Ct/x pair and the entered height.
 - If you want this app to follow a different house standard for the governing seismic coefficient, adjust the helper functions at the top of the file.
-""")
+"""
+    )
