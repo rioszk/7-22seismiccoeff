@@ -248,16 +248,6 @@ if uploaded_file is not None:
         if csv_df.shape[1] < 2:
             st.error("The uploaded CSV needs at least two columns.")
         else:
-            st.subheader("Uploaded spectrum preview")
-            st.dataframe(csv_df.head(10), use_container_width=False)
-
-            cols = list(csv_df.columns)
-            left, right = st.columns(2)
-            with left:
-                csv_t_col = st.selectbox("Period column", cols, index=0)
-            with right:
-                csv_sa_col = st.selectbox("Spectral acceleration column", cols, index=1)
-
             Sa_csv = interpolate_uploaded_spectrum(T_plot, csv_df, csv_t_col, csv_sa_col)
             C_csv = coefficient_from_sa(Sa_csv, inputs.R, inputs.Ie)
 
@@ -432,6 +422,7 @@ if C_csv_Tuser is not None:
         }
     )
 
+st.dataframe(pd.DataFrame(results_rows_Tuser), use_container_width=False, hide_index=True)
 # -----------------------------------------------------------------------------
 # Downloadable plot data
 # -----------------------------------------------------------------------------
