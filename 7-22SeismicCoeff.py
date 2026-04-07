@@ -324,49 +324,35 @@ if csv_ready:
         )
     )
 
-fig.add_trace(
-    go.Scatter(
-        x=[Ta],
-        y=[C_asce_sel],
-        mode="markers+text",
-        name="ASCE @ Ta",
-        text=[f"ASCE = {C_asce_sel:.4f}"],
-        textposition="top center",
-        marker=dict(size=10),
-        hovertemplate="Approximate period Ta<br>Method: ASCE 7-22<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
-        showlegend=False,
-    )
-)
+
+fig.add_vline(x=Ta, line_dash="dash", line_color="white", annotation_text=f"Ta = {Ta:.3f} s")
+
+summary_text = f"""
+<b>Results at Ta = {Ta:.3f} s</b><br>
+ASCE Cs: {C_asce_sel:.4f}<br>
+"""
 
 if C_csv_sel is not None:
-    fig.add_trace(
-        go.Scatter(
-            x=[Ta],
-            y=[C_csv_sel],
-            mode="markers+text",
-            name="CSV @ Ta",
-            text=[f"CSV = {C_csv_sel:.4f}"],
-            textposition="bottom center",
-            marker=dict(size=10),
-            hovertemplate="Approximate period Ta<br>Method: CSV spectrum<br>Period: %{x:.3f} s<br>Coefficient: %{y:.4f}<extra></extra>",
-            showlegend=False,
-        )
-    )
+    summary_text += f"CSV Cs: {C_csv_sel:.4f}<br>"
 
-fig.add_vline(x=Ta, line_dash="dash", annotation_text=f"Ta = {Ta:.3f} s")
-fig.add_trace(
-    go.Scatter(
-        x=[Ta],
-        y=[governing_value],
-        mode="markers+text",
-        name="Governing at Ta",
-        text=[f"Governing at Ta: {governing_method}<br>Cs = {governing_value:.4f}"],
-        textposition="middle right",
-        marker=dict(size=15, symbol="star"),
-        hovertemplate=f"Governing at Ta<br>Method: {governing_method}<br>Period: %{{x:.3f}} s<br>Coefficient: %{{y:.4f}}<extra></extra>",
-        showlegend=False,
+summary_text += f"<b>Governing:</b> {governing_method}<br>Cs = {governing_value:.4f}"
+
+annotations=[
+    dict(
+        x=0.98,
+        y=0.98,
+        xref="paper",
+        yref="paper",
+        text=summary_text,
+        showarrow=False,
+        align="right",
+        bordercolor="white",
+        borderwidth=1,
+        bgcolor="rgba(0,0,0,0.6)",
+        font=dict(size=12, color="white")
     )
-)
+],
+
 
 # Add Y-axis headroom
 y_max = max(
