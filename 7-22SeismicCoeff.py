@@ -26,6 +26,7 @@ class SeismicInputs:
     Sds: float
     Sd1: float
     TL: float
+    Tuser: float
 
 
 # -----------------------------------------------------------------------------
@@ -114,7 +115,7 @@ st.caption(
 )
 
 with st.sidebar:
-    st.header("Seismic inputs")
+    st.header("Seismic Inputs")
 
     risk_category = st.selectbox("Risk category", ["I", "II", "III", "IV"], index=3)
 
@@ -131,12 +132,23 @@ with st.sidebar:
         disabled=True,
     )
 
-    st.subheader("System factors")
+    st.subheader("System Factors")
     R = st.number_input("Response modification coefficient, R", value=8.0, min_value=0.1, step=0.1)
     omega_0 = st.number_input("Overstrength factor, Ω₀", value=2.5, min_value=0.1, step=0.1)
     Cd = st.number_input("Deflection amplification factor, Cd", value=3.0, min_value=0.1, step=0.1)
 
-    st.subheader("Approximate period parameters")
+    st.subheader("Seismic Hazard (Recommended to use ASCE 7 Hazard Tool)")
+    Ss = st.number_input("Ss", value=2.28, min_value=0.0, step=0.01)
+    S1 = st.number_input("S1", value=0.76, min_value=0.0, step=0.01)
+    Sms = st.number_input("Sms", value=2.41, min_value=0.0, step=0.01)
+    Sm1 = st.number_input("Sm1", value=1.74, min_value=0.0, step=0.01)
+    Sds = st.number_input("Sds", value=1.61, min_value=0.0, step=0.01)
+    Sd1 = st.number_input("Sd1", value=1.16, min_value=0.0, step=0.01)
+    TL = st.number_input("TL (s)", value=8.0, min_value=0.01, step=0.1)
+
+    
+
+    st.subheader("Approximate Period Parameters")
     period_parameter_options = {
         "0.028, 0.80": (0.028, 0.80),
         "0.016, 0.90": (0.016, 0.90),
@@ -150,31 +162,19 @@ with st.sidebar:
     )
     Ct, x = period_parameter_options[period_parameter_label]
 
-    left_period, right_period = st.columns(2)
-    with left_period:
-        st.number_input("Ct", value=float(Ct), min_value=0.0, step=0.001, format="%.3f", disabled=True)
-    with right_period:
-        st.number_input("x", value=float(x), min_value=0.0, step=0.01, format="%.2f", disabled=True)
-
     hn = st.number_input("Structural height, hn (ft)", value=30.0, min_value=0.0, step=1.0)
-
-    st.subheader("Seismic hazard")
-    Ss = st.number_input("Ss", value=2.28, min_value=0.0, step=0.01)
-    S1 = st.number_input("S1", value=0.76, min_value=0.0, step=0.01)
-    Sms = st.number_input("Sms", value=2.41, min_value=0.0, step=0.01)
-    Sm1 = st.number_input("Sm1", value=1.74, min_value=0.0, step=0.01)
-    Sds = st.number_input("Sds", value=1.61, min_value=0.0, step=0.01)
-    Sd1 = st.number_input("Sd1", value=1.16, min_value=0.0, step=0.01)
-    TL = st.number_input("TL (s)", value=8.0, min_value=0.01, step=0.1)
-
+    
     Ta = calc_Ta(Ct, x, hn)
-
+    
     enforce_lower_bound = st.checkbox("Apply ELF lower-bound coefficient check", value=True)
 
     st.markdown("---")
     st.header("Multi-period spectrum CSV")
     uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
+
+    st.subheader("Manual Period Entry")
+    Tuser = st.number_input("T",value=0.38, min_value=0.0, step=0.01, help="Enter a specific period to evaluate the seismic coefficient at; e.g. analysis calculated period")
 
 inputs = SeismicInputs(
     risk_category=risk_category,
@@ -192,6 +192,7 @@ inputs = SeismicInputs(
     Sds=Sds,
     Sd1=Sd1,
     TL=TL,
+    Tuser=Tuser,
 )
 
 
@@ -212,9 +213,9 @@ with col_a:
             "Units": ["s", "s", "s", "s", "-"],
             "Reference": [
                 "12.8.2.1",
-                "11.4.5",
-                "11.4.5",
-                "Mapped long-period transition period",
+                "11.4.5.2",
+                "11.4.5.2",
+                "11.4.5.2",
                 "12.8-6 / 12.8-7",
             ],
         }
