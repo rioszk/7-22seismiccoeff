@@ -220,7 +220,7 @@ with col_a:
             ],
         }
     )
-    st.dataframe(summary_df, use_container_width=True, hide_index=True)
+    st.dataframe(summary_df, use_container_width=False, hide_index=True)
 
 
 # -----------------------------------------------------------------------------
@@ -249,7 +249,7 @@ if uploaded_file is not None:
             st.error("The uploaded CSV needs at least two columns.")
         else:
             st.subheader("Uploaded spectrum preview")
-            st.dataframe(csv_df.head(10), use_container_width=True)
+            st.dataframe(csv_df.head(10), use_container_width=False)
 
             cols = list(csv_df.columns)
             left, right = st.columns(2)
@@ -369,6 +369,7 @@ fig.update_layout(
     yaxis_title="Seismic Coefficient, Cs",
     hovermode="x unified",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    xaxis=dict(hoverformat=".3f"),
     yaxis=dict(range=[0, y_max * (1 + y_buffer)]),
     height=650,
 )
@@ -402,7 +403,7 @@ if C_csv_sel is not None:
         }
     )
 
-st.dataframe(pd.DataFrame(results_rows), use_container_width=True, hide_index=True)
+st.dataframe(pd.DataFrame(results_rows), use_container_width=False, hide_index=True)
 
 
 # -----------------------------------------------------------------------------
