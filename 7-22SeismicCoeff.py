@@ -272,31 +272,42 @@ if uploaded_file is not None:
 # -----------------------------------------------------------------------------
 # Evaluate at Ta
 # -----------------------------------------------------------------------------
-Sa_asce_sel = float(design_spectrum_sa(np.array([Ta]), inputs.Sds, inputs.Sd1, inputs.TL)[0])
-C_asce_sel = float(coefficient_from_sa(np.array([Sa_asce_sel]), inputs.R, inputs.Ie)[0])
+Sa_asce_Ta = float(design_spectrum_sa(np.array([Ta]), inputs.Sds, inputs.Sd1, inputs.TL)[0])
+C_asce_Ta = float(coefficient_from_sa(np.array([Sa_asce_Ta]), inputs.R, inputs.Ie)[0])
+
 
 if enforce_lower_bound:
-    C_asce_sel = max(C_asce_sel, lb)
+    C_asce_Ta = max(C_asce_Ta, lb)
 
-C_csv_sel = None
-Sa_csv_sel = None
+C_csv_Ta = None
+Sa_csv_Ta = None
 if csv_ready:
-    Sa_csv_sel = float(interpolate_uploaded_spectrum(np.array([Ta]), csv_df, csv_t_col, csv_sa_col)[0])
-    C_csv_sel = float(coefficient_from_sa(np.array([Sa_csv_sel]), inputs.R, inputs.Ie)[0])
+    Sa_csv_Ta = float(interpolate_uploaded_spectrum(np.array([Ta]), csv_df, csv_t_col, csv_sa_col)[0])
+    C_csv_Ta = float(coefficient_from_sa(np.array([Sa_csv_Ta]), inputs.R, inputs.Ie)[0])
 
     if enforce_lower_bound:
-        C_csv_sel = max(C_csv_sel, lb)
+        C_csv_Ta = max(C_csv_Ta, lb)
 
-if C_csv_sel is None:
-    governing_method = "ASCE 7-22 design spectrum"
-    governing_value = C_asce_sel
-else:
-    if C_asce_sel >= C_csv_sel:
-        governing_method = "ASCE 7-22 design spectrum"
-        governing_value = C_asce_sel
-    else:
-        governing_method = "Uploaded multi-period spectrum"
-        governing_value = C_csv_sel
+
+# -----------------------------------------------------------------------------
+# Evaluate at Tuser
+# -----------------------------------------------------------------------------
+Sa_asce_Tuser = float(design_spectrum_sa(np.array([Tuser]), inputs.Sds, inputs.Sd1, inputs.TL)[0])
+C_asce_Tuser = float(coefficient_from_sa(np.array([Sa_asce_Tuser]), inputs.R, inputs.Ie)[0])
+
+
+if enforce_lower_bound:
+    C_asce_Tuser = max(C_asce_Tuser, lb)
+
+C_csv_Tuser = None
+Sa_csv_Tuser = None
+if csv_ready:
+    Sa_csv_Tuser = float(interpolate_uploaded_spectrum(np.array([Tuser]), csv_df, csv_t_col, csv_sa_col)[0])
+    C_csv_Tuser = float(coefficient_from_sa(np.array([Sa_csv_Tuser]), inputs.R, inputs.Ie)[0])
+
+    if enforce_lower_bound:
+        C_csv_Tuser = max(C_csv_Tuser, lb)
+
 
 
 # -----------------------------------------------------------------------------
@@ -330,13 +341,12 @@ fig.add_vline(x=Ta, line_dash="dash", line_color="white", annotation_text=f"Ta =
 
 summary_text = f"""
 <b>Results at Ta = {Ta:.3f} s</b><br>
-ASCE Cs: {C_asce_sel:.4f}<br>
+ASCE Cs: {C_asce_Ta:.4f}<br>
 """
 
-if C_csv_sel is not None:
-    summary_text += f"CSV Cs: {C_csv_sel:.4f}<br>"
+if C_csv_Ta is not None:
+    summary_text += f"CSV Cs: {C_csv_Ta:.4f}<br>"
 
-summary_text += f"<b>Governing:</b> {governing_method}<br>Cs = {governing_value:.4f}"
 
 annotations=[
     dict(
@@ -359,7 +369,6 @@ annotations=[
 y_max = max(
     np.max(C_asce),
     np.max(C_csv) if csv_ready else 0,
-    governing_value,
 )
 y_buffer = 0.25
 
@@ -384,27 +393,44 @@ st.subheader("Approximate-period results")
 
 results_rows = [
     {
-        "Method": "ASCE 7-22 design spectrum",
+        "Method": "Two-Period Design Response Spectrum",
         "Approximate period Ta (s)": Ta,
-        "Sa(Ta)": Sa_asce_sel,
-        "Coefficient": C_asce_sel,
-        "Governing at Ta": governing_method == "ASCE 7-22 design spectrum",
+        "Sa(Ta)": Sa_asce_Ta,
+        "Coefficient": C_asce_Ta,
     }
 ]
 
-if C_csv_sel is not None:
+if C_csv_Ta is not None:
     results_rows.append(
         {
-            "Method": "Uploaded multi-period spectrum",
+            "Method": "Uploaded Multi-Period Design Response Spectrum",
             "Approximate period Ta (s)": Ta,
-            "Sa(Ta)": Sa_csv_sel,
-            "Coefficient": C_csv_sel,
-            "Governing at Ta": governing_method == "Uploaded multi-period spectrum",
+            "Sa(Ta)": Sa_csv_Ta,
+            "Coefficient": C_csv_Ta,
         }
     )
 
 st.dataframe(pd.DataFrame(results_rows), use_container_width=False, hide_index=True)
 
+st.subheader("Manually Entered Period Results")
+results_rows_Tuser = [
+    {
+        "Method": "Two-Period Design Response Spectrum",
+        "Approximate period Tuser (s)": Tuser,
+        "Sa(Tuser)": Sa_asce_Tuser,
+        "Coefficient": C_asce_Tuser,
+}
+]
+
+if C_csv_Tuser is not None:
+    results_rows_Tuser.append(
+        {
+            "Method": "Uploaded Multi-Period Design Response Spectrum",
+            "Approximate period Tuser (s)": Tuser,
+            "Sa(Tuser)": Sa_csv_Tuser,
+            "Coefficient": C_csv_Tuser,
+        }
+    )
 
 # -----------------------------------------------------------------------------
 # Downloadable plot data
