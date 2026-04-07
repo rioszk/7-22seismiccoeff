@@ -370,7 +370,7 @@ fig.update_layout(
     yaxis=dict(range=[0, y_max * (1 + y_buffer)]),
     annotations=[
         dict(
-            x=0.9,
+            x=0.65,
             y=0.98,
             xref="paper",
             yref="paper",
