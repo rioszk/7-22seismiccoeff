@@ -164,7 +164,7 @@ with st.sidebar:
 
     hn = st.number_input("Structural height, hn (ft)", value=30.0, min_value=0.0, step=1.0)
     
-    Ta = calc_Ta(Ct, x, hn)
+    Ta = round(calc_Ta(Ct, x, hn), 3)
     
     enforce_lower_bound = st.checkbox("Apply ELF lower-bound coefficient check", value=True)
 
@@ -248,6 +248,23 @@ if uploaded_file is not None:
         if csv_df.shape[1] < 2:
             st.error("The uploaded CSV needs at least two columns.")
         else:
+            st.subheader("Uploaded spectrum preview")
+            st.dataframe(csv_df.head(10), use_container_width=False)
+
+            cols = list(csv_df.columns)
+
+            # Default to first two columns
+            csv_t_col = cols[0]
+            csv_sa_col = cols[1]
+
+            # Optional override (available if needed)
+            with st.expander("Override CSV column selection (optional)"):
+                left, right = st.columns(2)
+                with left:
+                    csv_t_col = st.selectbox("Period column", cols, index=0)
+                with right:
+                    csv_sa_col = st.selectbox("Spectral acceleration column", cols, index=1)
+
             Sa_csv = interpolate_uploaded_spectrum(T_plot, csv_df, csv_t_col, csv_sa_col)
             C_csv = coefficient_from_sa(Sa_csv, inputs.R, inputs.Ie)
 
@@ -338,22 +355,6 @@ if C_csv_Ta is not None:
     summary_text += f"CSV Cs: {C_csv_Ta:.4f}<br>"
 
 
-annotations=[
-    dict(
-        x=0.98,
-        y=0.98,
-        xref="paper",
-        yref="paper",
-        text=summary_text,
-        showarrow=False,
-        align="right",
-        bordercolor="white",
-        borderwidth=1,
-        bgcolor="rgba(0,0,0,0.6)",
-        font=dict(size=12, color="white")
-    )
-],
-
 
 # Add Y-axis headroom
 y_max = max(
@@ -370,6 +371,21 @@ fig.update_layout(
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     xaxis=dict(hoverformat=".3f"),
     yaxis=dict(range=[0, y_max * (1 + y_buffer)]),
+    annotations=[
+        dict(
+            x=0.98,
+            y=0.98,
+            xref="paper",
+            yref="paper",
+            text=summary_text,
+            showarrow=False,
+            align="right",
+            bordercolor="white",
+            borderwidth=1,
+            bgcolor="rgba(0,0,0,0.6)",
+            font=dict(size=12, color="white")
+        )
+    ],
     height=650,
 )
 
