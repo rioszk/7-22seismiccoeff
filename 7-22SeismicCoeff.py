@@ -248,9 +248,6 @@ if uploaded_file is not None:
         if csv_df.shape[1] < 2:
             st.error("The uploaded CSV needs at least two columns.")
         else:
-            st.subheader("Uploaded spectrum preview")
-            st.dataframe(csv_df.head(10), use_container_width=False)
-
             cols = list(csv_df.columns)
 
             # Default to first two columns
